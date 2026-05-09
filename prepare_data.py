@@ -1,69 +1,200 @@
 import pandas as pd
-import os
+from pyspark.sql import SparkSession
+from pyspark.sql import functions as F
+import os, shutil
 
+# Ispeziono il dataset
+df = pd.read_csv("flight_data_2024.csv", nrows=5)
+print(df.columns.tolist())
+print(df.head())
+print(df.dtypes)
+print(df.shape)
 
-INPUT_FILE = "flight_data_2024.csv"
-OUTPUT_FILE = "flight_data_2024_clean.csv"
+# Effettuo la pulizia dei dati con PySpark
+spark = SparkSession.builder \
+    .appName("FlightDataCleaning") \
+    .getOrCreate()
 
+# Carico il dataset in un DataFrame di Spark
+df_raw = spark.read.csv("flight_data_2024.csv", header=True, inferSchema=True)
+print(f"Record iniziali: {df_raw.count()}")
 
-#1 Carico il dataset
-print("Caricamento dataset...")
-df = pd.read_csv(INPUT_FILE, low_memory=False)
-print(f"      Righe iniziali: {len(df):,}")
-print(f"      Colonne: {list(df.columns)}")
-
-
-#2 Seleziono solo le colonne necessarie
-print("Selezione colonne di interesse...")
-COLUMNS = [
-    "year", 
+# Seleziono solo le colonne rilevanti per i Job1 e Job2
+cols_needed = [
+    "year",
     "month",
     "day_of_month",
-    "fl_date",
-    "op_unique_carrier",         # codice compagnia aerea
-    "origin",                    # aeroporto di partenza (codice IATA)
-    "origin_city_name",          # città di partenza
-    "dest",                      # aeroporto di destinazione
-    "dest_city_name",            # città di destinazione
-    "dep_delay",                 # ritardo partenza (minuti)
-    "arr_delay",                 # ritardo arrivo (minuti)
-    "cancelled",                 # volo cancellato (0/1)
-    "cancellation_code",         # causa cancellazione (A/B/C/D)
-    "diverted",                  # volo dirottato (0/1)
-    "carrier_delay",             # ritardo causa compagnia
-    "weather_delay",             # ritardo causa meteo
-    "nas_delay",                 # ritardo causa NAS
-    "security_delay",            # ritardo causa sicurezza
-    "late_aircraft_delay",       # ritardo causa aereo in ritardo
-    "distance",                  # distanza in miglia
-    "crs_elapsed_time",          # durata prevista
-    "actual_elapsed_time",       # durata reale
+    "op_unique_carrier",     
+    "origin",                 
+    "origin_city_name",       
+    "dest",               
+    "dest_city_name",         
+    "dep_delay",              
+    "arr_delay",              
+    "cancelled",              
+    "cancellation_code",  
+    "diverted",   
+    "carrier_delay",          
+    "weather_delay",
+    "nas_delay",
+    "security_delay",
+    "late_aircraft_delay",
 ]
-df = df[COLUMNS]
-print(f"      Colonne selezionate: {len(COLUMNS)}")
+
+df = df_raw.select(cols_needed)
+print(f"Colonne selezionate: {len(df.columns)}")
+
+# Rimuovo i record con valori nulli nelle colonne di interesse
+mandatory_cols = [
+    "year", "month",
+    "op_unique_carrier",
+    "origin", "dest",   
+    "cancelled","diverted"
+]
+df = df.dropna(subset=mandatory_cols)
+print(f"Dopo drop mandatory nulls: {df.count():,}")
+
+# Esclusione voli divertiti 
+df = df.filter(F.col("diverted") == 0)
+print(f"Dopo esclusione diverted: {df.count():,}")
+df = df.drop("diverted")
+
+# Voli cancellati implicano NULL su dep_delay e arr_delay, mentre voli non cancellati devono avere valori validi su dep_delay e arr_delay.
+
+df = df.filter(
+    (F.col("cancelled") == 1) |
+    (
+        F.col("dep_delay").isNotNull() &
+        F.col("arr_delay").isNotNull()
+    )
+)
+print(f"Dopo gestione sui ritardi: {df.count():,}")
+
+# Gestione cause ritardo
+# Le colonne causa sono NULL quando:
+# il volo è cancellato;
+# volo operato senza ritardo;
+
+delay_cause_cols = [
+    "carrier_delay", "weather_delay", "nas_delay",
+    "security_delay", "late_aircraft_delay"
+]
+for col_name in delay_cause_cols:
+    df = df.withColumn(
+        col_name,
+        F.when(
+            F.col("cancelled") == 0,
+            F.coalesce(F.col(col_name), F.lit(0))  # operato: NULL → 0
+        ).otherwise(F.lit(None))                    # cancellato: lascia NULL
+    )
+    
+# Validazione Temporale: Verifichiamo che i mesi e i giorni siano in range validi 
+
+df = df.filter(
+    (F.col("month").between(1, 12)) & 
+    (F.col("day_of_month").between(1, 31))
+)
+print(f"Dopo filtro temporale: {df.count():,}")
 
 
-#3 Eliminazione righe con dati mancanti nelle colonne di interesse
-print("Eliminazione righe con valori nulli nelle colonne di interesse...")
-rows_before = len(df)
-key_columns = ["op_unique_carrier", "origin", "dest", "month", "year", "fl_date"]
-df = df.dropna(subset=key_columns)
-print(f"      Righe rimosse: {rows_before - len(df):,}")
- 
+# Normalizzazione stringhe
+df = df.withColumn("op_unique_carrier",
+                   F.trim(F.upper(F.col("op_unique_carrier"))))
+df = df.withColumn("origin",
+                   F.trim(F.upper(F.col("origin"))))
+df = df.withColumn("dest",
+                   F.trim(F.upper(F.col("dest"))))
 
-#4 Normalizzazione
+# Validazione e Mappatura Codici Cancellazione
+valid_codes = ["A", "B", "C", "D"]
 
-# Cast numerici
-df["dep_delay"] = pd.to_numeric(df["dep_delay"], errors="coerce")
-df["arr_delay"] = pd.to_numeric(df["arr_delay"], errors="coerce")
-df["distance"] = pd.to_numeric(df["distance"], errors="coerce")
-df["cancelled"] = pd.to_numeric(df["cancelled"], errors="coerce").fillna(0).astype(int)
-df["diverted"] = pd.to_numeric(df["diverted"], errors="coerce").fillna(0).astype(int)
-df["month"] = pd.to_numeric(df["month"], errors="coerce").astype("Int64")
-df["year"] = pd.to_numeric(df["year"], errors="coerce").astype("Int64")
+# Prima puliamo: se non è A,B,C,D diventa NULL
+df = df.withColumn(
+    "cancellation_code",
+    F.when(F.col("cancellation_code").isin(valid_codes),
+           F.col("cancellation_code"))
+     .otherwise(F.lit(None))
+)
 
-# Colonne cause del ritardo: riempie NaN con 0 (volo non cancellato = nessun ritardo per quella causa)
-delay_columns = ["carrier_delay", "weather_delay", "nas_delay", "security_delay", "late_aircraft_delay"]
-for col in delay_columns:
-    df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
- 
+# Trasformiamo i codici in nomi leggibili
+df = df.withColumn(
+    "cancellation_reason", # Creiamo una nuova colonna parlante
+    F.when(F.col("cancellation_code") == "A", "Carrier")
+     .when(F.col("cancellation_code") == "B", "Weather")
+     .when(F.col("cancellation_code") == "C", "NAS")
+     .when(F.col("cancellation_code") == "D", "Security")
+     .otherwise("Not Cancelled")
+)
+
+print(f"Dopo la pulizia e la mappatura cancellazioni: {df.count():,}")
+
+# Controllo coerenza cancelled / cancellation_code 
+# Se cancelled=1 → cancellation_code dovrebbe essere valorizzato
+# Se cancelled=0 → cancellation_code deve essere NULL
+
+
+inconsistent_cancelled = df.filter(
+    (F.col("cancelled") == 1) & F.col("cancellation_code").isNull()
+).count()
+inconsistent_not_cancelled = df.filter(
+    (F.col("cancelled") == 0) & F.col("cancellation_code").isNotNull()
+).count()
+
+print(f"\n[QC] Voli cancellati senza cancellation_code: {inconsistent_cancelled:,}")
+print(f"[QC] Voli non cancellati con cancellation_code: {inconsistent_not_cancelled:,}")
+
+# Correggi il secondo caso (cancellation_code su voli operati → NULL)
+df = df.withColumn(
+    "cancellation_code",
+    F.when(F.col("cancelled") == 0, F.lit(None))
+     .otherwise(F.col("cancellation_code"))
+)
+
+# Report qualità finale 
+count_raw   = df_raw.count()
+count_clean = df.count()
+
+print("\n" + "="*55)
+print(f"  Record originali:          {count_raw:>10,}")
+print(f"  Record dopo pulizia:       {count_clean:>10,}")
+print(f"  Record eliminati:          {count_raw - count_clean:>10,}  "
+      f"({(count_raw - count_clean)/count_raw*100:.1f}%)")
+print("="*55)
+
+print("\nDistribuzione cancelled:")
+df.groupBy("cancelled").count().orderBy("cancelled").show()
+
+print("\nCause cancellazione:")
+df.filter(F.col("cancelled") == 1) \
+  .groupBy("cancellation_code").count() \
+  .orderBy("cancellation_code").show()
+
+print("\nDistribuzione per mese:")
+df.groupBy("month").count().orderBy("month").show()
+
+print("\nTop 10 compagnie per numero voli:")
+df.groupBy("op_unique_carrier").count() \
+  .orderBy(F.desc("count")).show(10)
+
+print("\nTop 10 aeroporti di partenza:")
+df.groupBy("origin").count() \
+  .orderBy(F.desc("count")).show(10)
+  
+# Salvataggio dataset pulito in CSV
+output_path = "flight_data_2024_clean.csv"
+
+df.coalesce(1).write.mode("overwrite") \
+    .option("header", True) \
+    .option("sep", ",") \
+    .csv(output_path + "_tmp")
+
+
+tmp = output_path + "_tmp"
+for f in os.listdir(tmp):
+    if f.endswith(".csv"):
+        shutil.move(os.path.join(tmp, f), output_path)
+        break
+shutil.rmtree(tmp)
+
+print(f"\n[SUCCESS] Dataset pulito salvato in: {output_path}")
+spark.stop()
