@@ -3,7 +3,7 @@ from pyspark.sql.functions import col, min, max, avg, count, sum, collect_set
 from pyspark.sql.functions import round as spark_round
 import json, time, os
 
-# ── Inizializza Spark ─────────────────────────────────────────
+# Inizializza Spark
 spark = SparkSession.builder \
     .appName("FlightData Job1 Spark SQL") \
     .master("local[*]") \
@@ -11,33 +11,30 @@ spark = SparkSession.builder \
     .getOrCreate()
 
 spark.sparkContext.setLogLevel("ERROR")
-
-# ── Caricamento dataset ───────────────────────────────────────
-df = spark.read.option("header", True).option("inferSchema", True).csv("flight_data_2024_clean.csv")
-
-# Cast colonne
-df = df.withColumn("arr_delay",  col("arr_delay").cast("double")) \
-       .withColumn("cancelled",  col("cancelled").cast("integer")) \
-       .withColumn("month",      col("month").cast("integer"))
-
-# ── Cartella output ───────────────────────────────────────────
 os.makedirs("output_job1_sparksql", exist_ok=True)
 
-# ── Test set con dimensioni crescenti ─────────────────────────
-total = df.count()
-test_sets = {
-    "500k": df.sample(False, 500000 / total, seed=42),
-    "1M":   df.sample(False, 1000000 / total, seed=42),
-    "3M":   df.sample(False, 3000000 / total, seed=42),
-    "full": df
-}
+# Lista delle taglie da testare (nomi dei file fisici)
+sizes = ["500k", "1M", "3M", "full"]
 
-for name, subset in test_sets.items():
-    print(f"\n▶️  Inizio test_{name}...")
+for name in sizes:
+    file_path = f"input/flight_{name}.csv" # Assicurati che il percorso sia corretto
+    if not os.path.exists(file_path):
+        print(f"⚠️ Salto {name}: file {file_path} non trovato.")
+        continue
+
+    print(f"\n▶️  Inizio test_{name} (lettura da file)...")
     start = time.time()
 
+    # Carica il file specifico
+    df = spark.read.option("header", True).option("inferSchema", True).csv(file_path)
+
+    # Cast colonne
+    df = df.withColumn("arr_delay",  col("arr_delay").cast("double")) \
+           .withColumn("cancelled",  col("cancelled").cast("integer")) \
+           .withColumn("month",      col("month").cast("integer"))
+
     # Aggrega per (carrier, aeroporto)
-    grouped = subset.groupBy("op_unique_carrier", "origin").agg(
+    grouped = df.groupBy("op_unique_carrier", "origin").agg(
         count("*").alias("num_flights"),
         spark_round(min(col("arr_delay")), 2).alias("arr_delay_min"),
         spark_round(max(col("arr_delay")), 2).alias("arr_delay_max"),
@@ -46,7 +43,7 @@ for name, subset in test_sets.items():
         collect_set("month").alias("months")
     ).collect()
 
-    # Ristruttura in carrier → lista aeroporti
+    # Ristruttura l'output
     result = {}
     for row in grouped:
         carrier = row["op_unique_carrier"].strip()
@@ -64,11 +61,8 @@ for name, subset in test_sets.items():
             }
         })
 
-    # Costruisce lista finale
-    structured = [{"carrier": carrier, "airports": airports}
-                  for carrier, airports in result.items()]
+    structured = [{"carrier": carrier, "airports": airports} for carrier, airports in result.items()]
 
-    # Salva in JSON
     with open(f"output_job1_sparksql/{name}.json", "w") as f:
         json.dump(structured, f, indent=4)
 
