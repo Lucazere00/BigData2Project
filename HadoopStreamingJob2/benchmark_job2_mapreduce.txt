@@ -1,0 +1,6 @@
+Benchmark MapReduce - Job 2
+============================
+500k: 18 sec
+1M: 27 sec
+3M: 62 sec
+full: 135 sec
