@@ -10,6 +10,12 @@ sc.setLogLevel("ERROR")
 
 os.makedirs("output_job1_sparkcore", exist_ok=True)
 
+MONTH_NAMES = {
+    1: "January", 2: "February", 3: "March", 4: "April",
+    5: "May", 6: "June", 7: "July", 8: "August",
+    9: "September", 10: "October", 11: "November", 12: "December"
+}
+
 def parse_line(line, idx_map):
     try:
         row = next(csv.reader(StringIO(line)))
@@ -56,7 +62,7 @@ def build_stats(acc):
         "arr_delay_max": round(max(delays), 2) if delays else None,
         "arr_delay_avg": round(sum(delays) / len(delays), 2) if delays else None,
         "cancellation_rate": round(total_cancelled / count, 4) if count > 0 else 0,
-        "months": sorted(months)
+        "months": [MONTH_NAMES[m] for m in sorted(months)]
     }
 
 sizes = ["500k", "1M", "3M", "full"]

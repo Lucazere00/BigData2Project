@@ -11,6 +11,13 @@ spark = SparkSession.builder \
 spark.sparkContext.setLogLevel("ERROR")
 os.makedirs("output_job2_sparksql", exist_ok=True)
 
+MONTH_NAMES = {
+    1: "January", 2: "February", 3: "March", 4: "April",
+    5: "May", 6: "June", 7: "July", 8: "August",
+    9: "September", 10: "October", 11: "November", 12: "December"
+}
+MONTH_ORDER = list(MONTH_NAMES.values())
+
 sizes = ["500k", "1M", "3M", "full"]
 
 for name in sizes:
@@ -82,7 +89,7 @@ for name in sizes:
         top_causes = [{"cause": k, "count": v} for k, v in sorted(causes.items(), key=lambda item: item[1], reverse=True) if v > 0][:3]
 
         month_data = {
-            "month": row["month"],
+            "month": MONTH_NAMES[row["month"]],
             "bands": {
                 "low": {
                     "count": row["low_count"],
@@ -104,7 +111,7 @@ for name in sizes:
         }
         results_dict[origin].append(month_data)
 
-    structured = [{"airport": k, "months": sorted(v, key=lambda x: x["month"])} for k, v in results_dict.items()]
+    structured = [{"airport": k, "months": sorted(v, key=lambda x: MONTH_ORDER.index(x["month"]))} for k, v in results_dict.items()]
 
     with open(f"output_job2_sparksql/{name}.json", "w") as f:
         json.dump(structured, f, indent=4)

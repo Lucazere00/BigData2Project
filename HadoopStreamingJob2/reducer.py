@@ -3,6 +3,14 @@ import sys
 import json
 from collections import defaultdict
 
+
+MONTH_NAMES = {
+    "1": "January", "2": "February", "3": "March", "4": "April",
+    "5": "May", "6": "June", "7": "July", "8": "August",
+    "9": "September", "10": "October", "11": "November", "12": "December"
+}
+
+
 # Struttura: airport -> month -> dati
 results = defaultdict(lambda: defaultdict(lambda: {
     "stats": {"low": [0, 0.0, 0.0], "medium": [0, 0.0, 0.0], "high": [0, 0.0, 0.0]},
@@ -72,7 +80,7 @@ for airp in sorted(results.keys()):
         top3 = [{"cause": k, "count": v} for k, v in sorted(data["causes"].items(), key=lambda x: -x[1])][:3]
         
         months_data.append({
-            "month": m,
+            "month": MONTH_NAMES[str(m)],
             "bands": band_results,
             "top_3_causes": top3
         })

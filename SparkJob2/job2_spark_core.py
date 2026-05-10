@@ -7,6 +7,13 @@ sc = SparkContext(conf=conf)
 sc.setLogLevel("ERROR")
 os.makedirs("output_job2_sparkcore", exist_ok=True)
 
+MONTH_NAMES = {
+    1: "January", 2: "February", 3: "March", 4: "April",
+    5: "May", 6: "June", 7: "July", 8: "August",
+    9: "September", 10: "October", 11: "November", 12: "December"
+}
+MONTH_ORDER = list(MONTH_NAMES.values())
+
 def parse_line(line, idx_map):
     try:
         row = next(csv.reader(StringIO(line)))
@@ -128,8 +135,8 @@ for name in sizes:
     parsed = raw_data.filter(lambda l: l != header).map(lambda l: parse_line(l, IDX)).filter(lambda x: x is not None)
     aggregated = parsed.combineByKey(create_combiner, merge_value, merge_combiners).mapValues(build_final)
 
-    structured = aggregated.map(lambda x: (x[0][0], {"month": x[0][1], **x[1]})) \
-                           .groupByKey().mapValues(lambda it: sorted(list(it), key=lambda x: x["month"])) \
+    structured = aggregated.map(lambda x: (x[0][0], {"month": MONTH_NAMES[x[0][1]], **x[1]})) \
+                           .groupByKey().mapValues(lambda it: sorted(list(it), key=lambda x: MONTH_ORDER.index(x["month"]))) \
                            .map(lambda x: {"airport": x[0], "months": x[1]}).collect()
 
     with open(f"output_job2_sparkcore/{name}.json", "w") as f:

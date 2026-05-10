@@ -13,6 +13,12 @@ spark = SparkSession.builder \
 spark.sparkContext.setLogLevel("ERROR")
 os.makedirs("output_job1_sparksql", exist_ok=True)
 
+MONTH_NAMES = {
+    1: "January", 2: "February", 3: "March", 4: "April",
+    5: "May", 6: "June", 7: "July", 8: "August",
+    9: "September", 10: "October", 11: "November", 12: "December"
+}
+
 # Lista delle taglie da testare (nomi dei file fisici)
 sizes = ["500k", "1M", "3M", "full"]
 
@@ -57,7 +63,7 @@ for name in sizes:
                 "arr_delay_max":     row["arr_delay_max"],
                 "arr_delay_avg":     row["arr_delay_avg"],
                 "cancellation_rate": row["cancellation_rate"],
-                "months":            sorted(row["months"])
+                "months":            [MONTH_NAMES[m] for m in sorted(row["months"])]
             }
         })
 

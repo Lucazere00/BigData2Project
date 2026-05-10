@@ -5,6 +5,12 @@ import sys
 import json
 from collections import defaultdict
 
+MONTH_NAMES = {
+    "1": "January", "2": "February", "3": "March", "4": "April",
+    "5": "May", "6": "June", "7": "July", "8": "August",
+    "9": "September", "10": "October", "11": "November", "12": "December"
+}
+
 # Struttura dati: carrier → airport → statistiche
 data = defaultdict(lambda: defaultdict(lambda: {
     "num_flights": 0,
@@ -50,7 +56,7 @@ for carrier, airports in data.items():
                 "arr_delay_max":     round(max(delays), 2) if delays else None,
                 "arr_delay_avg":     round(sum(delays) / len(delays), 2) if delays else None,
                 "cancellation_rate": round(stats["total_cancelled"] / count, 4) if count > 0 else 0,
-                "months":            sorted(stats["months"])
+                "months":            [MONTH_NAMES[str(m)] for m in sorted(stats["months"])]
             }
         })
     result.append({
