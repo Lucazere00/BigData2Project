@@ -3,7 +3,10 @@ from pyspark.sql.functions import col, min, max, avg, count, sum, collect_set
 from pyspark.sql.functions import round as spark_round
 import json, time, os
 
-# Inizializza Spark
+# =============================================================
+# Inizializzazione Spark
+# =============================================================
+
 spark = SparkSession.builder \
     .appName("FlightData Job1 Spark SQL") \
     .master("local[*]") \
@@ -14,42 +17,43 @@ spark.sparkContext.setLogLevel("ERROR")
 os.makedirs("output_job1_sparksql", exist_ok=True)
 
 MONTH_NAMES = {
-    1: "January", 2: "February", 3: "March", 4: "April",
-    5: "May", 6: "June", 7: "July", 8: "August",
+    1: "January", 2: "February",  3: "March",    4: "April",
+    5: "May",     6: "June",      7: "July",      8: "August",
     9: "September", 10: "October", 11: "November", 12: "December"
 }
 
-# Lista delle taglie da testare (nomi dei file fisici)
-sizes = ["500k", "1M", "3M", "full"]
+sizes = ["500k", "1M", "3M", "5M", "full"]
+
+# =============================================================
+# Esecuzione per ciascuna taglia
+# =============================================================
 
 for name in sizes:
-    file_path = f"input/flight_{name}.csv" # Assicurati che il percorso sia corretto
+    file_path = f"input/flight_{name}.csv"
     if not os.path.exists(file_path):
-        print(f"⚠️ Salto {name}: file {file_path} non trovato.")
+        print(f"Salto {name}: file {file_path} non trovato.")
         continue
 
-    print(f"\n▶️  Inizio test_{name} (lettura da file)...")
+    print(f"\nInizio {name}...")
     start = time.time()
 
-    # Carica il file specifico
+    # Caricamento e cast delle colonne
     df = spark.read.option("header", True).option("inferSchema", True).csv(file_path)
+    df = df.withColumn("arr_delay", col("arr_delay").cast("double")) \
+           .withColumn("cancelled", col("cancelled").cast("integer")) \
+           .withColumn("month",     col("month").cast("integer"))
 
-    # Cast colonne
-    df = df.withColumn("arr_delay",  col("arr_delay").cast("double")) \
-           .withColumn("cancelled",  col("cancelled").cast("integer")) \
-           .withColumn("month",      col("month").cast("integer"))
-
-    # Aggrega per (carrier, aeroporto)
+    # Aggregazione per (carrier, aeroporto)
     grouped = df.groupBy("op_unique_carrier", "origin").agg(
         count("*").alias("num_flights"),
-        spark_round(min(col("arr_delay")), 2).alias("arr_delay_min"),
-        spark_round(max(col("arr_delay")), 2).alias("arr_delay_max"),
-        spark_round(avg(col("arr_delay")), 2).alias("arr_delay_avg"),
+        spark_round(min(col("arr_delay")),             2).alias("arr_delay_min"),
+        spark_round(max(col("arr_delay")),             2).alias("arr_delay_max"),
+        spark_round(avg(col("arr_delay")),             2).alias("arr_delay_avg"),
         spark_round(sum(col("cancelled")) / count("*"), 4).alias("cancellation_rate"),
         collect_set("month").alias("months")
     ).collect()
 
-    # Ristruttura l'output
+    # Costruzione output JSON
     result = {}
     for row in grouped:
         carrier = row["op_unique_carrier"].strip()
@@ -67,12 +71,11 @@ for name in sizes:
             }
         })
 
-    structured = [{"carrier": carrier, "airports": airports} for carrier, airports in result.items()]
+    structured = [{"carrier": c, "airports": a} for c, a in result.items()]
 
     with open(f"output_job1_sparksql/{name}.json", "w") as f:
         json.dump(structured, f, indent=4)
 
-    duration = round(time.time() - start, 2)
-    print(f"✅ test_{name} completato in {duration} secondi.")
+    print(f"{name} completato in {round(time.time() - start, 2)} secondi.")
 
 spark.stop()

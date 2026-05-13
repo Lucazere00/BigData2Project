@@ -1,29 +1,30 @@
 #!/usr/bin/env python3
 # reducer.py - Job 1
 # Riceve righe ordinate per carrier, aggrega le statistiche per aeroporto
+
 import sys
 import json
 from collections import defaultdict
 
 MONTH_NAMES = {
-    "1": "January", "2": "February", "3": "March", "4": "April",
-    "5": "May", "6": "June", "7": "July", "8": "August",
-    "9": "September", "10": "October", "11": "November", "12": "December"
+    1: "January", 2: "February",  3: "March",    4: "April",
+    5: "May",     6: "June",      7: "July",      8: "August",
+    9: "September", 10: "October", 11: "November", 12: "December"
 }
 
-# Struttura dati: carrier → airport → statistiche
+# Struttura dati: carrier -> airport -> statistiche
 data = defaultdict(lambda: defaultdict(lambda: {
-    "num_flights": 0,
+    "num_flights":     0,
     "total_cancelled": 0,
-    "delays": [],
-    "months": set()
+    "delays":          [],
+    "months":          set()
 }))
 
 for line in sys.stdin:
     try:
         key, value = line.strip().split("\t")
         carrier = key.strip()
-        parts = value.strip().split(",")
+        parts   = value.strip().split(",")
 
         origin    = parts[0].strip()
         arr_delay = parts[1].strip()
@@ -41,7 +42,7 @@ for line in sys.stdin:
     except Exception:
         continue
 
-# Costruisce output finale come JSON
+# Costruzione output JSON
 result = []
 for carrier, airports in data.items():
     airport_list = []
@@ -52,11 +53,11 @@ for carrier, airports in data.items():
             "airport": origin,
             "data": {
                 "num_flights":       count,
-                "arr_delay_min":     round(min(delays), 2) if delays else None,
-                "arr_delay_max":     round(max(delays), 2) if delays else None,
+                "arr_delay_min":     round(min(delays), 2)             if delays else None,
+                "arr_delay_max":     round(max(delays), 2)             if delays else None,
                 "arr_delay_avg":     round(sum(delays) / len(delays), 2) if delays else None,
                 "cancellation_rate": round(stats["total_cancelled"] / count, 4) if count > 0 else 0,
-                "months":            [MONTH_NAMES[str(m)] for m in sorted(stats["months"])]
+                "months":            [MONTH_NAMES[m] for m in sorted(stats["months"])]
             }
         })
     result.append({

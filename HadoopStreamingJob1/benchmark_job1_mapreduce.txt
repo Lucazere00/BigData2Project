@@ -1,6 +1,9 @@
 Benchmark MapReduce - Job 1
 ============================
+Inizio: lun 11 mag 2026, 23:29:13, CEST
+
 500k: 16 sec
-1M: 20 sec
-3M: 42 sec
-full: 87 sec
+1M: 21 sec
+3M: 45 sec
+5M: 67 sec
+full: 89 sec
