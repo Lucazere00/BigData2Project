@@ -9,7 +9,7 @@ Analisi comparativa di tecnologie per l'elaborazione di big data su un dataset r
 ---
 
 ## Struttura del progetto
-
+```text
 BIGDATA2PROJECT
 ├── aws_job1/
 │   ├── aws_job1_spark_core.py
@@ -43,7 +43,8 @@ BIGDATA2PROJECT
 ├── flight_data_2024.csv              ← da aggiungere manualmente (non incluso nel repo)
 ├── prepare_data.py
 └── README.md
-
+...
+```
 ---
 
 ## Dataset
@@ -73,14 +74,15 @@ Questo script:
 - Carica `flight_data_2024.csv`
 - Applica le operazioni di pulizia e normalizzazione
 - Genera la cartella `input/` con i seguenti subset:
-  
+```text
 input/
 ├── flight_500k.csv
 ├── flight_1M.csv
 ├── flight_3M.csv
 ├── flight_5M.csv
 └── flight_full.csv
-
+...
+```
 ---
 
 ### Step 2 — Esecuzione dei job Spark in locale
