@@ -1,11 +1,11 @@
 #!/bin/bash
-# run_benchmark_2.sh - Job 2 MapReduce
+# run_benchmark_job2.sh - Job 2 MapReduce
 # Esegue il Job 2 su Hadoop per dataset di dimensioni crescenti
 
-MAPPER=$(pwd)/mapper.py
-REDUCER=$(pwd)/reducer.py
-HDFS_INPUT_DIR="/user/lucazere00/input"
-HDFS_OUTPUT_DIR="/user/lucazere00/output_job2_mapreduce"
+MAPPER=$(pwd)/mapper_job2.py
+REDUCER=$(pwd)/reducer_job2.py
+HDFS_INPUT_DIR="/user/$USER/input"
+HDFS_OUTPUT_DIR="/user/$USER/output_job2_mapreduce"
 LOCAL_RESULTS_DIR="./output_job2_mapreduce"
 LOG_FILE="benchmark_job2_mapreduce.txt"
 
@@ -31,8 +31,8 @@ for SIZE in 500k 1M 3M 5M full; do
     hadoop jar $HADOOP_STREAMING_JAR \
         -D mapreduce.job.reduces=1 \
         -files "$MAPPER,$REDUCER" \
-        -mapper  "python3 mapper.py" \
-        -reducer "python3 reducer.py" \
+        -mapper  "python3 mapper_job2.py" \
+        -reducer "python3 reducer_job2.py" \
         -input   "$HDFS_INPUT_FILE" \
         -output  "$HDFS_OUTPUT_PATH"
 

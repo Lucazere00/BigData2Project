@@ -1,15 +1,15 @@
 #!/bin/bash
-# run_benchmark.sh - Job 1 MapReduce
+# run_benchmark_job1.sh - Job 1 MapReduce
 # Esegue il Job 1 su Hadoop per dataset di dimensioni crescenti
 
-MAPPER=/home/lucazere00/Scrivania/BigData2Project/HadoopStreamingJob1/mapper.py
-REDUCER=/home/lucazere00/Scrivania/BigData2Project/HadoopStreamingJob1/reducer.py
-HDFS_INPUT_DIR="/user/lucazere00/input"
-HDFS_OUTPUT_DIR="/user/lucazere00/output_job1_mapreduce"
+MAPPER=$(pwd)/mapper_job1.py
+REDUCER=$(pwd)/reducer_job1.py
+HDFS_INPUT_DIR="/user/$USER/input"
+HDFS_OUTPUT_DIR="/user/$USER/output_job1_mapreduce"
 LOCAL_RESULTS_DIR="./output_job1_mapreduce"
 LOG_FILE="benchmark_job1_mapreduce.txt"
 
-HADOOP_STREAMING_JAR=$(ls $HADOOP_HOME/share/hadoop/tools/lib/hadoop-streaming-*.jar)
+HADOOP_STREAMING_JAR=$(ls $HADOOP_HOME/share/hadoop/tools/lib/hadoop-streaming-*.jar | head -n 1)
 
 mkdir -p $LOCAL_RESULTS_DIR
 
@@ -33,8 +33,8 @@ for SIZE in 500k 1M 3M 5M full; do
     hadoop jar $HADOOP_STREAMING_JAR \
         -D mapreduce.job.reduces=1 \
         -files "$MAPPER,$REDUCER" \
-        -mapper  "python3 mapper.py" \
-        -reducer "python3 reducer.py" \
+        -mapper  "python3 mapper_job1.py" \
+        -reducer "python3 reducer_job1.py" \
         -input   "$HDFS_INPUT_FILE" \
         -output  "$HDFS_OUTPUT_PATH"
 
@@ -51,5 +51,5 @@ for SIZE in 500k 1M 3M 5M full; do
 done
 
 echo ""
-echo "Tempi salvati in:    $LOG_FILE"
+echo "Tempi salvati in:     $LOG_FILE"
 echo "Risultati salvati in: $LOCAL_RESULTS_DIR"
