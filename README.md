@@ -108,9 +108,11 @@ python SparkJob2/job2_spark_core.py
 ```
 
 Output generato in:
+```text
 output_job2_sparksql/
 output_job2_sparkcore/
-
+...
+```
 Ogni script elabora automaticamente tutti e 5 i subset e salva i risultati in formato JSON.
 
 ---
@@ -142,5 +144,8 @@ bash run_benchmark_job2.sh
 ```
 
 I risultati vengono scaricati automaticamente da HDFS in:
+```text
 HadoopStreamingJob1/output_job1_mapreduce/
 HadoopStreamingJob2/output_job2_mapreduce/
+...
+```
