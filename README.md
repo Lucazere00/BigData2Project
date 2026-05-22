@@ -97,8 +97,11 @@ python SparkJob1/job1_spark_core.py
 ```
 
 Output generato in:
+```text
 output_job1_sparksql/
 output_job1_sparkcore/
+...
+```
 
 **Job 2:**
 
@@ -112,6 +115,7 @@ Output generato in:
 output_job2_sparksql/
 output_job2_sparkcore/
 ...
+```
 
 Ogni script elabora automaticamente tutti e 5 i subset e salva i risultati in formato JSON.
 
