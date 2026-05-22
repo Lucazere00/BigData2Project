@@ -44,7 +44,6 @@ BIGDATA2PROJECT
 ├── prepare_data.py
 └── README.md
 ...
-```
 ---
 
 ## Dataset
@@ -82,7 +81,6 @@ input/
 ├── flight_5M.csv
 └── flight_full.csv
 ...
-```
 ---
 
 ### Step 2 — Esecuzione dei job Spark in locale
@@ -112,7 +110,7 @@ Output generato in:
 output_job2_sparksql/
 output_job2_sparkcore/
 ...
-```
+
 Ogni script elabora automaticamente tutti e 5 i subset e salva i risultati in formato JSON.
 
 ---
@@ -148,4 +146,3 @@ I risultati vengono scaricati automaticamente da HDFS in:
 HadoopStreamingJob1/output_job1_mapreduce/
 HadoopStreamingJob2/output_job2_mapreduce/
 ...
-```
