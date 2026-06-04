@@ -4,7 +4,7 @@ Progetto per il corso di Big Data — Università degli Studi Roma Tre.
 Analisi comparativa di tecnologie per l'elaborazione di big data su un dataset reale di voli del 2024.
 
 **Gruppo:** WN Group  
-**Studenti:** Luca Zerella (631722), Gianluca De Musis()
+**Studenti:** Luca Zerella (631722), Gianluca De Musis(629532)
 
 ---
 
